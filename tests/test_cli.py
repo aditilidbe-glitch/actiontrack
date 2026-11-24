@@ -173,3 +173,14 @@ def test_ingest_is_fast(tmp_path: Path, samples_copy: Path) -> None:
 def test_ingest_twice_cli_reports_zero_new(cli: Runner, samples_copy: Path) -> None:
     _, out, _ = cli.run("ingest", str(samples_copy))
     assert "items: 0 new, 0 updated, 0 merged" in out
+
+
+def test_assign_command(cli: Runner) -> None:
+    _, out, _ = cli.run("list", "--json")
+    item = next(i for i in json.loads(out) if "sign off the cutover checklist" in i["text"])
+    assert cli.run("assign", item["id"], "Priya")[0] == EXIT_USAGE
+    assert cli.run("assign", item["id"], "Priya Nair")[0] == EXIT_OK
+    assert "already assigned" in cli.run("assign", item["id"], "Priya Nair")[1]
+    _, after, _ = cli.run("list", "--json", "--owner", "Priya Nair")
+    assert item["id"] in {i["id"] for i in json.loads(after)}
+    assert cli.run("assign", "AT-zzzzzz", "Priya Nair")[0] == EXIT_ERROR

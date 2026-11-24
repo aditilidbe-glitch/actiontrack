@@ -45,6 +45,14 @@ def owners_key(owners: Iterable[Owner]) -> tuple[str, ...]:
     return tuple(sorted(owner_key(o) for o in owners))
 
 
+def _item_keys(item: Item) -> list[tuple[str, ...]]:
+    """Owner keys an item answers to: its owners, plus the pre-assign owners (R-OWN-05)."""
+    keys = [owners_key(item.owners)]
+    if item.assigned_from:
+        keys.append(owners_key(item.assigned_from))
+    return keys
+
+
 def find_best_match(
     items: Iterable[Item],
     key: tuple[str, ...],
@@ -55,7 +63,7 @@ def find_best_match(
     best: Item | None = None
     best_score = 0.0
     for item in sorted(items, key=lambda i: i.id):
-        if owners_key(item.owners) != key:
+        if key not in _item_keys(item):
             continue
         score = similarity(tokens, task_tokens(item.text))
         if score >= threshold and score > best_score:

@@ -143,9 +143,11 @@ class Item:
     manual_done: bool
     done_at: str | None
     sources: tuple[Source, ...]
+    assigned_from: tuple[Owner, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "assigned_from": [owner.to_dict() for owner in self.assigned_from],
             "id": self.id,
             "text": self.text,
             "owners": [owner.to_dict() for owner in self.owners],
@@ -173,4 +175,5 @@ class Item:
             manual_done=bool(data.get("manual_done", False)),
             done_at=data.get("done_at"),
             sources=tuple(Source.from_dict(s) for s in _require(data, "sources", "item")),
+            assigned_from=tuple(Owner.from_dict(o) for o in data.get("assigned_from", ())),
         )

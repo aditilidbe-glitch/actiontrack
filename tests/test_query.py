@@ -139,3 +139,73 @@ def test_resolve_owner_query_kinds(ingested, roster) -> None:
     store, _ = ingested
     assert resolve_owner_query(store, roster, "Karan Joshi").kind is OwnerKind.RESOLVED
     assert resolve_owner_query(store, roster, "everyone").kind is OwnerKind.EVERYONE
+
+
+# --- assign (R-OWN-05) ---
+
+
+def test_assign_resolves_ambiguous_owner_and_persists_original(ingested, roster) -> None:
+    from actiontrack.query import assign_owner
+
+    store, _ = ingested
+    item = find_item(store, "sign off the cutover checklist")
+    result = assign_owner(store, roster, item.id, "Priya Nair")
+    assert result.changed
+    updated = store.items[item.id]
+    assert [(o.kind, o.name) for o in updated.owners] == [(OwnerKind.RESOLVED, "Priya Nair")]
+    assert updated.assigned_from[0].kind is OwnerKind.AMBIGUOUS
+    assert assign_owner(store, roster, item.id, "Priya Nair").changed is False
+
+
+def test_assign_rejects_bad_targets(ingested, roster) -> None:
+    from actiontrack.query import assign_owner
+
+    store, _ = ingested
+    ambiguous = find_item(store, "sign off the cutover checklist")
+    resolved = find_item(store, "send the vendor invoice list")
+    with pytest.raises(AmbiguousOwnerError):
+        assign_owner(store, roster, ambiguous.id, "Priya")
+    with pytest.raises(UsageError):
+        assign_owner(store, roster, ambiguous.id, "everyone")
+    with pytest.raises(UsageError, match="no ambiguous owner"):
+        assign_owner(store, roster, ambiguous.id, "Sam Okafor")
+    with pytest.raises(UsageError, match="no ambiguous owner"):
+        assign_owner(store, roster, resolved.id, "Priya Nair")
+    with pytest.raises(OwnerNotFoundError):
+        assign_owner(store, roster, ambiguous.id, "Zed")
+    with pytest.raises(UnknownIdError):
+        assign_owner(store, roster, "AT-zzzzzz", "Priya Nair")
+
+
+def test_assigned_item_is_listed_for_new_owner_and_survives_reingest(samples_dir, roster, ingested) -> None:
+    from actiontrack.ingest import ingest_folder
+    from actiontrack.query import assign_owner
+
+    store, _ = ingested
+    item = find_item(store, "sign off the cutover checklist")
+    assign_owner(store, roster, item.id, "Priya Nair")
+    report = ingest_folder(samples_dir, store, roster)
+    assert (report.items_new, report.items_updated) == (0, 0)
+    assert store.items[item.id].owners[0].name == "Priya Nair"
+    ids = {v.item.id for v in list_items(store, roster, ListFilters(owner="Priya Nair"), TODAY).items}
+    assert item.id in ids
+
+
+def test_new_ambiguous_mention_merges_into_assigned_item(tmp_path, roster) -> None:
+    from actiontrack.ingest import ingest_folder
+    from actiontrack.query import assign_owner
+    from actiontrack.store import Store
+
+    folder = tmp_path / "n"
+    folder.mkdir()
+    template = "# Meeting: M\nDate: {d}\nAttendees: Priya Nair, Priya Shah\n\n## Action items\n- [{c}] Priya to sign off the checklist\n"
+    (folder / "2026-09-01-a.md").write_text(template.format(d="2026-09-01", c=" "), encoding="utf-8")
+    store = Store()
+    ingest_folder(folder, store, roster)
+    (item,) = store.items.values()
+    assign_owner(store, roster, item.id, "Priya Shah")
+    (folder / "2026-09-08-b.md").write_text(template.format(d="2026-09-08", c="x"), encoding="utf-8")
+    ingest_folder(folder, store, roster)
+    assert len(store.items) == 1
+    (merged,) = store.items.values()
+    assert merged.done and len(merged.sources) == 2 and merged.owners[0].name == "Priya Shah"

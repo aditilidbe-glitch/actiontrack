@@ -143,3 +143,13 @@ def test_person_rejects_blank_or_non_string_name(bad_name: object) -> None:
 
 def test_model_error_is_an_actiontrack_error() -> None:
     assert issubclass(ModelError, models.ActionTrackError)
+
+
+def test_assigned_from_round_trips_and_defaults_empty() -> None:
+    """R-OWN-05."""
+    original = (Owner(kind=OwnerKind.AMBIGUOUS, name="Priya", candidates=("Priya Nair", "Priya Shah")),)
+    item = make_item(assigned_from=original)
+    assert Item.from_dict(item.to_dict()).assigned_from == original
+    data = make_item().to_dict()
+    del data["assigned_from"]
+    assert Item.from_dict(data).assigned_from == ()

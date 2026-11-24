@@ -7,7 +7,7 @@ from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 
 from actiontrack.dates import STATUS_DONE, STATUS_OPEN, STATUS_OVERDUE, compute_status
-from actiontrack.models import ActionTrackError, Item, OwnerKind, Person
+from actiontrack.models import ActionTrackError, Item, Owner, OwnerKind, Person
 from actiontrack.owners import EVERYONE_LABEL, UNASSIGNED_LABEL, owner_display
 from actiontrack.store import Store, resolve_id
 
@@ -156,6 +156,36 @@ def _add_notes(result: ListResult, target: OwnerTarget | None, ambiguous: int, n
         )
     if no_due:
         result.notes.append(f"{no_due} item(s) with no due date were excluded by --due-before")
+
+
+@dataclass(frozen=True)
+class AssignResult:
+    item: Item
+    changed: bool
+
+
+def _assignable(owner: Owner, name: str) -> bool:
+    """An ambiguous owner can become `name` if it lists no candidates or lists that name."""
+    return owner.kind is OwnerKind.AMBIGUOUS and (not owner.candidates or name in owner.candidates)
+
+
+def assign_owner(store: Store, roster: Sequence[Person], id_text: str, owner_name: str) -> AssignResult:
+    """Resolve an ambiguous owner to one known person (R-OWN-05). Never touches note files."""
+    target = resolve_owner_query(store, roster, owner_name)
+    if target.kind is not OwnerKind.RESOLVED:
+        raise UsageError("assign needs the full name of a single person")
+    item_id = resolve_id(store, id_text)
+    item = store.items[item_id]
+    if any(o.kind is OwnerKind.RESOLVED and o.name == target.name for o in item.owners) and item.assigned_from:
+        return AssignResult(item, False)
+    if not any(_assignable(o, target.name) for o in item.owners):
+        raise UsageError(f"{item_id} has no ambiguous owner that can be {target.name}")
+    owners = tuple(
+        Owner(OwnerKind.RESOLVED, target.name) if _assignable(o, target.name) else o for o in item.owners
+    )
+    updated = replace(item, owners=owners, assigned_from=item.assigned_from or item.owners)
+    store.items[item_id] = updated
+    return AssignResult(updated, True)
 
 
 @dataclass(frozen=True)

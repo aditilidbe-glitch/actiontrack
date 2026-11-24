@@ -24,6 +24,7 @@ from actiontrack.query import (
     ListFilters,
     ListResult,
     UsageError,
+    assign_owner,
     list_items,
     mark_done,
     parse_iso_date,
@@ -60,6 +61,9 @@ def build_parser() -> argparse.ArgumentParser:
     listing.add_argument("--json", action="store_true", dest="as_json")
     done = sub.add_parser("done", parents=[common], help="mark an item done")
     done.add_argument("id")
+    assign = sub.add_parser("assign", parents=[common], help="resolve an ambiguous owner to one person")
+    assign.add_argument("id")
+    assign.add_argument("owner", help="full name of the person")
     follow = sub.add_parser("followup", parents=[common], help="draft (never send) a Gmail follow-up")
     follow.add_argument("owner")
     follow.add_argument("--dry-run", action="store_true", dest="dry_run")
@@ -160,6 +164,18 @@ def _cmd_done(args: argparse.Namespace, out: TextIO, err: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_assign(args: argparse.Namespace, out: TextIO, err: TextIO) -> int:
+    path = _store_path(args)
+    store = load_store(path)
+    result = assign_owner(store, _roster(args, err), args.id, args.owner)
+    if result.changed:
+        save_store(path, store)
+        print(f"assigned {result.item.id} to {args.owner}", file=out)
+    else:
+        print(f"{result.item.id} is already assigned to {args.owner}", file=out)
+    return EXIT_OK
+
+
 def format_followup(result: FollowupResult) -> str:
     if result.action == ACTION_NONE:
         lines = [f"No open action items for {result.owner}; no draft created."]
@@ -217,6 +233,8 @@ def main(
             return _cmd_list(args, out, err)
         if args.command == "done":
             return _cmd_done(args, out, err)
+        if args.command == "assign":
+            return _cmd_assign(args, out, err)
         return _cmd_followup(args, out, err, adapter_factory)
     except UsageError as exc:
         print(f"error: {exc}", file=err)
