@@ -25,6 +25,7 @@ python -m venv .venv
 actiontrack ingest <folder> [--recursive]
 actiontrack list [--owner NAME] [--status open|done|overdue] [--due-before YYYY-MM-DD] [--json]
 actiontrack done <id>
+actiontrack assign <id> "<full name>"
 actiontrack followup <owner> [--dry-run]
 ```
 
@@ -47,7 +48,7 @@ Try it on the bundled samples:
 | Same action in several meetings | Merged into one item (same owner, similar text). Latest status wins, latest due date wins, all sources kept, merges are reported. |
 | Missing owner (`Someone`, `TBD`) or group (`Everyone`, `Team`) | Stored as `(unassigned)` / `(everyone)`. Listed, never followed up. |
 | Missing or vague due date | Stored as no due date, never "overdue". Vague phrases like "mid-October" are kept as raw text. |
-| Same first name (two Priyas, two Rahuls) | Resolved from the meeting's attendees and `people.json`. If still unclear the owner is stored as ambiguous (`Priya?`); `list --owner Priya` and `followup Priya` refuse and list the candidates. It never guesses. |
+| Same first name (two Priyas, two Rahuls) | Resolved from the meeting's attendees and `people.json`. If still unclear the owner is stored as ambiguous (`Priya?`); `list --owner Priya` and `followup Priya` refuse and list the candidates. It never guesses. Fix one with `assign <id> "Priya Nair"` (persistent, notes untouched). |
 | Malformed notes (empty, binary, no header, no date) | Skipped and reported with a reason. Other notes still ingest. |
 | Quoted lines, code fences, HTML comments | Checkboxes inside them are excluded and counted. |
 | Nested bullets, `*`/`+` markers, tables with Owner / Action / Due | Parsed as items. |
@@ -61,7 +62,7 @@ Notes are never modified. Re-ingesting is idempotent, and a manual `done` is nev
 {"people": [{"name": "Priya Nair", "email": "priya.nair@example.com", "aliases": ["Priya N."]}]}
 ```
 
-Emails come only from this file. If an owner has no email the draft is still created with an empty To field and flagged `NO RECIPIENT`. `samples/people.example.json` uses placeholder `@example.com` addresses.
+Emails come only from this file. `people.json` is git-ignored so real addresses are never committed; copy `samples/people.example.json` and edit it. If an owner has no email the draft is still created with an empty To field and flagged `NO RECIPIENT`. `samples/people.example.json` uses placeholder `@example.com` addresses.
 
 ## Gmail drafts
 
@@ -96,6 +97,6 @@ docs/           spec and plans
 samples/        sample notes and example roster
 ```
 
-## Open decisions
+## Decisions
 
-Still defaults from the spec, pending your answers: similarity-based merging (OQ-2), filename-date fallback (OQ-3), no `assign` command (OQ-4), checkboxes under the offsite's sections are tracked (OQ-5), "Everyone" items are list-only (OQ-6). See section 6 of the spec.
+Resolved with the project owner: similarity-based merging is kept with every merge reported (OQ-2), the filename-date fallback stays with a warning (OQ-3), `assign` exists (OQ-4), all checkboxes except under "Parking lot" are tracked (OQ-5), "Everyone" items are list-only (OQ-6), and the real roster stays local (OQ-7). See section 6 of the spec.
