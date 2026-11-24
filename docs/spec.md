@@ -1,7 +1,7 @@
 # actiontrack: Specification
 
 **Date:** 2026-11-24
-**Status:** APPROVED 2026-11-24 by the user (open questions OQ-1..7 not yet individually answered; spec's current positions stand until answered).
+**Status:** APPROVED 2026-11-24 by the user. Open questions OQ-1..7 resolved 2026-11-24 (see section 6).
 **Language/stack:** Python 3.11+, stdlib `argparse`, `pytest`.
 
 ## 1. Problem statement
@@ -17,7 +17,7 @@ Action items from meetings live in scattered markdown notes. People re-state the
 ## 3. Scope
 
 In: the four commands, a roster file, local JSON store, Gmail **draft** creation.
-Out (this iteration): sending email in any form; editing note files; a manual `assign` command; calendar integration; reminders/scheduling; multi-user sync; ACTION:-prefixed lines (detected and reported, not tracked); non-markdown files; a UI.
+Out (this iteration): sending email in any form; editing note files; calendar integration; reminders/scheduling; multi-user sync; ACTION:-prefixed lines (detected and reported, not tracked); non-markdown files; a UI.
 
 ## 4. Requirements
 
@@ -90,6 +90,12 @@ IDs are stable. Each has acceptance criteria (AC). `samples/notes/` is the refer
 - **R-OWN-04. Roster file `people.json`** (path: `--people` or `./people.json`) lists `{name, email, aliases[]}`. It is optional for ingest; names seen in attendee lists are also known people (without email).
   - AC-OWN-04.1: Missing roster → ingest still works; a warning notes that emails are unavailable.
   - AC-OWN-04.2: Malformed roster JSON → error, exit 1, nothing else changes.
+
+- **R-OWN-05. `actiontrack assign <id> <full name>`** resolves an ambiguous owner to one known person, persistently.
+  - AC-OWN-05.1: `assign <id> "Priya Nair"` on an item whose owner is `Priya?` (candidates Nair, Shah) makes the owner Priya Nair; the original ambiguous owner is kept as `assigned_from`; note files are never modified.
+  - AC-OWN-05.2: Short or ambiguous names (`Priya`), `everyone`, `unassigned`, unknown people, items with no ambiguous owner that can be that person, and unknown ids are rejected (exit 2 or 1) and change nothing.
+  - AC-OWN-05.3: Re-ingest keeps the assignment; a later ambiguous mention of the same short name merges into the assigned item.
+  - AC-OWN-05.4: Assigning twice is a no-op with a message and exit 0.
 
 ### 4.5 Dates and status (R-DAT)
 
@@ -180,12 +186,12 @@ IDs are stable. Each has acceptance criteria (AC). `samples/notes/` is the refer
 - **AE5.** `followup "Karan Joshi" --dry-run` → draft with Karan's open items grouped by meeting, overdue marked, plus `NO RECIPIENT` if the roster has no email.
 - **AE6.** `followup "Karan Joshi"` with the fake Gmail adapter → exactly one `create_draft` call, zero send calls.
 
-## 6. Open questions (need your decision)
+## 6. Decisions on open questions (resolved 2026-11-24)
 
-- [ ] **OQ-1. How does the CLI reach the Gmail MCP connector?** A standalone Python process cannot call the connector that Claude Code holds. Recommended: the CLI builds the draft (`to`, `subject`, `body` JSON) and a thin adapter hands it to a headless `claude -p` call restricted to `create_draft`/`update_draft` (allowedTools), with `--dry-run` and a file-based adapter as fallbacks. Alternative: CLI only writes draft JSON, and Claude Code (this session) calls `create_draft`. Which do you want?
-- [ ] **OQ-2. Wrong merges.** Is a similarity-based merge acceptable, or should you confirm every non-exact merge interactively?
-- [ ] **OQ-3. Date fallback.** Filename-date fallback (R-ING-04, `2026-10-03-sales-pipeline.md`) is a documented exception to "never guess dates". Accept, or skip such notes?
-- [ ] **OQ-4. Manual `assign <id> <full name>`** to resolve ambiguous owners without editing notes: add to scope?
-- [ ] **OQ-5. Checkboxes outside `## Action items`** in the offsite note (Morning/Afternoon sections): track them (current spec) or only the formal section?
-- [ ] **OQ-6. "Everyone" items** (e.g. "Everyone to submit Q4 goals"): list-only (current), or fan out to every attendee in follow-ups?
-- [ ] **OQ-7. `people.json` emails.** You need to supply the roster (names + emails); I will not invent addresses. Sample roster to be added with placeholder `@example.com` addresses for tests only.
+- **OQ-1.** Gmail access via a headless `claude -p` call limited to the draft tools; `--dry-run` as fallback. Not yet exercised against real Gmail.
+- **OQ-2.** Similarity-based merging is kept (threshold 0.6, every merge reported).
+- **OQ-3.** Filename-date fallback is kept, with a warning on every ingest.
+- **OQ-4.** An `assign` command is added (R-OWN-05).
+- **OQ-5.** All checkboxes are tracked except those under a "Parking lot" heading.
+- **OQ-6.** "Everyone" items are list-only; never included in follow-ups.
+- **OQ-7.** The user creates a local `people.json` (git-ignored); the repo ships only `samples/people.example.json`.
