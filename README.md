@@ -2,7 +2,7 @@
 
 A small Python CLI that ingests markdown meeting notes, tracks the action items in them, and **drafts (never sends)** Gmail follow-ups per owner.
 
-- Spec: [docs/spec.md](docs/spec.md) (requirement IDs and acceptance criteria)
+- Spec: [docs/spec.md](docs/spec.md) (index and traceability table) and one spec per module in [docs/spec/](docs/spec/) (requirement IDs and acceptance criteria)
 - Plan: [docs/plans/2026-11-24-001-feat-actiontrack-plan.md](docs/plans/2026-11-24-001-feat-actiontrack-plan.md)
 - Project rules: [CLAUDE.md](CLAUDE.md)
 

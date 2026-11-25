@@ -16,7 +16,7 @@ Commands: `ingest <folder>`, `list` (`--owner`, `--status open|done|overdue`, `-
 
 ## Spec-driven development workflow
 
-1. Brainstorm to `docs/spec.md` (requirement IDs like `R-ING-01`, acceptance criteria like `AC-ING-01.1`). STOP for user approval.
+1. Brainstorm to `docs/spec.md` (index and context) with per-module requirements in `docs/spec/*.md` (requirement IDs like `R-ING-01`, acceptance criteria like `AC-ING-01.1`). STOP for user approval.
 2. Plan to `docs/plans/` (units `U1..Un`, test scenarios per unit, each traced to requirement IDs).
 3. Project skills in `.claude/skills/` (note parsing, follow-up drafting).
 4. Implement unit by unit, test first, run against `samples/notes/`.
