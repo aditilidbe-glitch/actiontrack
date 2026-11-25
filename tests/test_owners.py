@@ -153,3 +153,10 @@ def test_bad_roster_raises_with_path(tmp_path: Path, content: str) -> None:
 def test_missing_roster_raises(tmp_path: Path) -> None:
     with pytest.raises(RosterError):
         load_roster(tmp_path / "absent.json")
+
+
+def test_roster_with_utf8_bom_loads(tmp_path: Path) -> None:
+    """Windows editors and PowerShell add a BOM; it must not break the roster."""
+    path = tmp_path / "people.json"
+    path.write_bytes(b"\xef\xbb\xbf" + json.dumps({"people": [{"name": "Karan Joshi"}]}).encode("utf-8"))
+    assert [p.name for p in load_roster(path)] == ["Karan Joshi"]

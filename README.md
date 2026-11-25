@@ -68,7 +68,8 @@ Emails come only from this file. `people.json` is git-ignored so real addresses 
 
 `followup` builds one draft per owner (open and overdue items grouped by meeting) and hands it to an adapter:
 
-- **Default**: a headless `claude -p` call restricted with `--allowedTools` to the Gmail draft tools. Set `ACTIONTRACK_GMAIL_TOOL_PREFIX` to the tool-name prefix of your Gmail connector (default `mcp__claude_ai_Gmail__`). Verified so far: the Gmail connector's `create_draft` produced a real draft (label `DRAFT`, not sent) from actiontrack's follow-up text, in a manual check on 2026-11-24. Not yet verified: the CLI's own headless `claude -p` call and its tool-name prefix. Verify with `--dry-run` first, then one real draft.
+- **Default**: a headless `claude -p` call restricted with `--allowedTools` to the Gmail draft tools (`mcp__claude_ai_Gmail__create_draft` and friends; override the prefix with `ACTIONTRACK_GMAIL_TOOL_PREFIX`). If `claude` is not on PATH, point `ACTIONTRACK_CLAUDE_BIN` at the executable (the desktop app ships one under `%APPDATA%\Claude\claude-code\<version>\...\claude.exe`).
+  - Verified end to end on 2026-11-25: `actiontrack followup "Karan Joshi"` created a real Gmail draft (label `DRAFT`, not sent, body identical to the `--dry-run` output, no recipient because the roster had no email). The adapter trusts the last line of the headless reply as the draft id, so check the draft in Gmail the first time you use it.
 - **`--dry-run`**: prints the draft and makes no Gmail call.
 
 Re-running `followup` for the same owner updates the existing draft instead of creating another.

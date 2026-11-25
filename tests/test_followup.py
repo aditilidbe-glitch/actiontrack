@@ -224,3 +224,11 @@ def test_real_subprocess_is_blocked_in_tests(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(gmail.shutil, "which", lambda name: "claude")
     with pytest.raises(AssertionError, match="real Gmail"):
         ClaudeHeadlessAdapter().create_draft(DraftPayload("", "s", "b"))
+
+
+def test_claude_binary_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ACTIONTRACK_CLAUDE_BIN", "C:/tools/claude.exe")
+    command = ClaudeHeadlessAdapter(prefix="p__").build_command("create_draft", None, DraftPayload("", "s", "b"))
+    assert command[0] == "C:/tools/claude.exe"
+    monkeypatch.delenv("ACTIONTRACK_CLAUDE_BIN")
+    assert gmail.claude_binary() == "claude"

@@ -21,7 +21,7 @@ class RosterError(ActionTrackError):
 def load_roster(path: Path) -> list[Person]:
     """Load and validate the roster; raises RosterError with the file path."""
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except OSError as exc:
         raise RosterError(f"cannot read roster {path}: {exc.strerror or exc}") from exc
     except json.JSONDecodeError as exc:

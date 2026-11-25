@@ -28,6 +28,7 @@ DENIED_TOOLS = ("send_message", "reply", "forward")
 ENV_TOOL_PREFIX = "ACTIONTRACK_GMAIL_TOOL_PREFIX"
 DEFAULT_TOOL_PREFIX = "mcp__claude_ai_Gmail__"
 CLAUDE_BINARY = "claude"
+ENV_CLAUDE_BIN = "ACTIONTRACK_CLAUDE_BIN"
 HEADLESS_TIMEOUT_SECONDS = 180
 
 
@@ -86,6 +87,11 @@ class FakeDraftAdapter:
         return draft_id
 
 
+def claude_binary() -> str:
+    """Path or name of the claude CLI; override with ACTIONTRACK_CLAUDE_BIN."""
+    return os.environ.get(ENV_CLAUDE_BIN, CLAUDE_BINARY)
+
+
 def tool_prefix() -> str:
     return os.environ.get(ENV_TOOL_PREFIX, DEFAULT_TOOL_PREFIX)
 
@@ -114,7 +120,7 @@ class ClaudeHeadlessAdapter:
     def build_command(self, action: str, draft_id: str | None, payload: DraftPayload) -> list[str]:
         guard_tool(action)
         return [
-            CLAUDE_BINARY,
+            claude_binary(),
             "-p",
             _prompt(action, draft_id, payload),
             "--allowedTools",
@@ -124,8 +130,10 @@ class ClaudeHeadlessAdapter:
         ]
 
     def _run(self, action: str, draft_id: str | None, payload: DraftPayload) -> str:
-        if shutil.which(CLAUDE_BINARY) is None:
-            raise GmailError("the 'claude' CLI was not found on PATH; use --dry-run instead")
+        if shutil.which(claude_binary()) is None:
+            raise GmailError(
+                f"the claude CLI '{claude_binary()}' was not found; set {ENV_CLAUDE_BIN} or use --dry-run"
+            )
         command = self.build_command(action, draft_id, payload)
         try:
             done = subprocess.run(
